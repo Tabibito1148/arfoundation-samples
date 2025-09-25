@@ -1,22 +1,26 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
-using TMPro;
 
 public class ARTouchManager : MonoBehaviour
 {
     [Header("AR Components")]
     public ARRaycastManager raycastManager;
+
     public Camera arCamera;
 
     [Header("Prefabs")]
     public GameObject ballPrefab;
+
     public GameObject agentPrefab;
 
     [Header("UI")]
     public TextMeshProUGUI scoreText;
+
     public TextMeshProUGUI sizeText;
 
     private List<ARRaycastHit> raycastHits = new List<ARRaycastHit>();
@@ -24,27 +28,33 @@ public class ARTouchManager : MonoBehaviour
     private int score = 0;
     private bool agentSpawned = false;
 
-    private Color[] ballColors = { Color.red, Color.blue, Color.green, Color.yellow, Color.magenta, Color.cyan, Color.white };
+    private Color[] ballColors = {
+        Color.red, Color.blue, Color.green, Color.yellow,
+        Color.magenta, Color.cyan, Color.white
+    };
 
-    void Update()
+    private void Update()
     {
-        if (Input.touchCount > 0)
+        if (Touchscreen.current != null)
         {
-            Touch touch = Input.GetTouch(0);
-
-            if (touch.phase == TouchPhase.Began)
+            var touch = Touchscreen.current.primaryTouch;
+            if (touch.press.wasPressedThisFrame)
             {
-                HandleTouch(touch.position);
+                Vector2 touchPosition = touch.position.ReadValue();
+                HandleTouch(touchPosition);
             }
         }
-
-        if (Input.GetMouseButtonDown(0))
+        if (Mouse.current != null)
         {
-            HandleTouch(Input.mousePosition);
+            if (Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                Vector2 mousePosition = Mouse.current.position.ReadValue();
+                HandleTouch(mousePosition);
+            }
         }
     }
 
-    void HandleTouch(Vector2 screenPosition)
+    private void HandleTouch(Vector2 screenPosition)
     {
         if (raycastManager.Raycast(screenPosition, raycastHits, TrackableType.PlaneWithinPolygon))
         {
@@ -61,7 +71,7 @@ public class ARTouchManager : MonoBehaviour
         }
     }
 
-    void SpawnAgent(Vector3 position)
+    private void SpawnAgent(Vector3 position)
     {
         GameObject agentObj = Instantiate(agentPrefab, position, Quaternion.identity);
         agent = agentObj.GetComponent<AgentController>();
@@ -71,7 +81,7 @@ public class ARTouchManager : MonoBehaviour
         StartCoroutine(BounceAnimation(agentObj.transform));
     }
 
-    void SpawnBall(Vector3 position)
+    private void SpawnBall(Vector3 position)
     {
         GameObject ball = Instantiate(ballPrefab, position, Quaternion.identity);
 
@@ -85,10 +95,11 @@ public class ARTouchManager : MonoBehaviour
         {
             agent.SetTarget(ball);
         }
+
         StartCoroutine(BounceAnimation(ball.transform));
     }
 
-    IEnumerator BounceAnimation(Transform target)
+    private IEnumerator BounceAnimation(Transform target)
     {
         Vector3 originalScale = target.localScale;
         target.localScale = Vector3.zero;
@@ -111,12 +122,12 @@ public class ARTouchManager : MonoBehaviour
         UpdateUI();
     }
 
-    void UpdateUI()
+    private void UpdateUI()
     {
-        scoreText.text = "Score: " + score;
-        if (agent != null)
-        {
+        if (scoreText != null)
+            scoreText.text = "Score: " + score;
+
+        if (sizeText != null && agent != null)
             sizeText.text = "Size: " + agent.GetSize().ToString("F1");
-        }
     }
 }

@@ -13,6 +13,7 @@ public class Ball : MonoBehaviour
         mat.EnableKeyword("_EMISSION");
         mat.SetColor("_EmissionColor", color * 0.3f);
     }
+
     public Color GetColor()
     {
         return ballColor;

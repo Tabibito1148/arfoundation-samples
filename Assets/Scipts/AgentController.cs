@@ -1,9 +1,6 @@
-using System.Collections;
-using System.Xml.Serialization;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Rendering;
-
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CapsuleCollider))]
@@ -15,19 +12,21 @@ public class AgentController : MonoBehaviour
     [SerializeField] float moveSpeed = 2f;
     [SerializeField] float rotationSpeed = 5f;
 
-
     [Header("Agent Related")]
     [Space(10)]
     [SerializeField] float baseSize = 1f;
     [SerializeField] float sizeToIncrement = 0.1f;
 
-
-    public GameObject currentTarget; // El que va a seguir (por ahora poner el publico)
+    public GameObject currentTarget;
     private ARTouchManager gameManager;
-    private Vector3 wanderTaget;
+    private Vector3 wanderTarget;
     private float wanderTimer = 0f;
-    public float currentSize; // Tama�o actual (publico por el momento para evidenciar crecimiento)
+    public float currentSize;
     private Renderer agentRender;
+
+    // ← NUEVO: Referencias NavMesh
+    private NavMeshAgent navAgent;
+    private bool navMeshReady = false;
 
     private enum AgentState
     {
@@ -41,18 +40,73 @@ public class AgentController : MonoBehaviour
     public void Initialize(ARTouchManager touchManager)
     {
         gameManager = touchManager;
-
         currentSize = baseSize;
-
         agentRender = GetComponent<Renderer>();
+
+        // ← NUEVO: Configurar NavMeshAgent
+        navAgent = GetComponent<NavMeshAgent>();
+        navAgent.speed = moveSpeed;
+        navAgent.angularSpeed = rotationSpeed * 57.3f; // Convertir a grados
+        navAgent.radius = 0.5f;
+        navAgent.height = 2f;
+        navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+
+        // Desactivar NavMesh hasta que esté listo
+        navAgent.enabled = false;
 
         agentRender.material.color = Color.white;
 
-        SetWanderTarget();
+        // Esperar un poco para que NavMesh se genere
+        StartCoroutine(WaitForNavMesh());
+    }
+
+    // ← NUEVO: Esperar a que NavMesh esté listo
+    IEnumerator WaitForNavMesh()
+    {
+        yield return new WaitForSeconds(1f); // Esperar un segundo
+
+        // Intentar activar NavMesh
+        if (TryActivateNavMesh())
+        {
+            SetWanderTarget();
+        }
+        else
+        {
+            // Si no está listo, intentar cada medio segundo
+            StartCoroutine(RetryNavMeshActivation());
+        }
+    }
+
+    IEnumerator RetryNavMeshActivation()
+    {
+        while (!navMeshReady)
+        {
+            yield return new WaitForSeconds(0.5f);
+            if (TryActivateNavMesh())
+            {
+                SetWanderTarget();
+                break;
+            }
+        }
+    }
+
+    bool TryActivateNavMesh()
+    {
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(transform.position, out hit, 2f, NavMesh.AllAreas))
+        {
+            navAgent.enabled = true;
+            navMeshReady = true;
+            return true;
+        }
+        return false;
     }
 
     private void Update()
     {
+        // Solo actuar si NavMesh está listo
+        if (!navMeshReady) return;
+
         switch (currentState)
         {
             case AgentState.Wandering:
@@ -72,17 +126,26 @@ public class AgentController : MonoBehaviour
     {
         wanderTimer -= Time.deltaTime;
 
-        if (wanderTimer <= 0f || Vector3.Distance(transform.position, wanderTaget) < 0.5f)
+        // ← CAMBIADO: Usar NavMesh para verificar si llegó
+        if (wanderTimer <= 0f || !navAgent.pathPending && navAgent.remainingDistance < 0.5f)
         {
             SetWanderTarget();
         }
-        MoveTowards(wanderTaget);
     }
 
     void SetWanderTarget()
     {
         Vector2 randomPointInCircle = Random.insideUnitCircle * 3f;
-        wanderTaget = transform.position + new Vector3(randomPointInCircle.x, 0, randomPointInCircle.y);
+        Vector3 potentialTarget = transform.position + new Vector3(randomPointInCircle.x, 0, randomPointInCircle.y);
+
+        // ← CAMBIADO: Verificar que el punto esté en NavMesh
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(potentialTarget, out hit, 5f, NavMesh.AllAreas))
+        {
+            wanderTarget = hit.position;
+            navAgent.SetDestination(wanderTarget);
+        }
+
         wanderTimer = Random.Range(2f, 5f);
     }
 
@@ -93,32 +156,22 @@ public class AgentController : MonoBehaviour
             currentState = AgentState.Wandering;
             return;
         }
+
+        // ← CAMBIADO: Usar NavMesh distance
         float distance = Vector3.Distance(transform.position, currentTarget.transform.position);
 
         if (distance < 0.5f)
         {
             EatBall();
-
         }
         else
         {
-            MoveTowards(currentTarget.transform.position);
+            // ← CAMBIADO: Usar NavMesh para moverse
+            navAgent.SetDestination(currentTarget.transform.position);
         }
     }
 
-    void MoveTowards(Vector3 target)
-    {
-        Vector3 direction = (target - transform.position).normalized;
-        direction.y = 0;
-
-        if (direction != Vector3.zero)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        }
-
-        transform.position += direction * moveSpeed * Time.deltaTime;
-    }
+    // ← ELIMINADO: MoveTowards ya no se necesita, NavMesh lo hace automáticamente
 
     public void SetTarget(GameObject target)
     {
@@ -132,6 +185,9 @@ public class AgentController : MonoBehaviour
 
         currentState = AgentState.Eating;
 
+        // ← NUEVO: Detener NavMesh mientras come
+        navAgent.ResetPath();
+
         Ball ballScript = currentTarget.GetComponent<Ball>();
         Color ballColor = ballScript.GetColor();
 
@@ -140,6 +196,9 @@ public class AgentController : MonoBehaviour
         currentSize += sizeToIncrement;
         transform.localScale = Vector3.one * currentSize;
 
+        // ← NUEVO: Actualizar NavMesh agent size
+        navAgent.radius = 0.5f * currentSize;
+
         gameManager.AddScore(10);
 
         StartCoroutine(DestroyBallEffect(currentTarget));
@@ -147,7 +206,6 @@ public class AgentController : MonoBehaviour
         currentTarget = null;
 
         StartCoroutine(ReturnToWandering());
-
     }
 
     IEnumerator ChangeColorAnimation(Color targetColor)
@@ -183,7 +241,6 @@ public class AgentController : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         currentState = AgentState.Wandering;
         SetWanderTarget();
-
     }
 
     public float GetSize()

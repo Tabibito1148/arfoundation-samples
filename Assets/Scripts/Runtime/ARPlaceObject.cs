@@ -6,17 +6,17 @@ namespace UnityEngine.XR.ARFoundation.Samples
     /// </summary>
     public class ARPlaceObject : MonoBehaviour
     {
-        const float k_PrefabHalfSize = 0.025f;
+        private const float k_PrefabHalfSize = 0.025f;
 
         [SerializeField]
         [Tooltip("The prefab to be placed or moved.")]
-        GameObject m_PrefabToPlace;
+        private GameObject m_PrefabToPlace;
 
         [SerializeField]
         [Tooltip("The Scriptable Object Asset that contains the ARRaycastHit event.")]
-        ARRaycastHitEventAsset m_RaycastHitEvent;
+        private ARRaycastHitEventAsset m_RaycastHitEvent;
 
-        GameObject m_SpawnedObject;
+        private GameObject m_SpawnedObject;
 
         /// <summary>
         /// The prefab to be placed or moved.
@@ -36,7 +36,7 @@ namespace UnityEngine.XR.ARFoundation.Samples
             set => m_SpawnedObject = value;
         }
 
-        void OnEnable()
+        private void OnEnable()
         {
             if (m_RaycastHitEvent == null || m_PrefabToPlace == null)
             {
@@ -48,13 +48,13 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 m_RaycastHitEvent.eventRaised += PlaceObjectAt;
         }
 
-        void OnDisable()
+        private void OnDisable()
         {
             if (m_RaycastHitEvent != null)
                 m_RaycastHitEvent.eventRaised -= PlaceObjectAt;
         }
 
-        void PlaceObjectAt(object sender, ARRaycastHit hitPose)
+        private void PlaceObjectAt(object sender, ARRaycastHit hitPose)
         {
             if (m_SpawnedObject == null)
             {

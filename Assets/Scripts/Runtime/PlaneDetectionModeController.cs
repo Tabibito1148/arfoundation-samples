@@ -11,31 +11,31 @@ namespace UnityEngine.XR.ARFoundation.Samples
     {
         [Tooltip("The UI Text element used to display the state of the Plane Detection Mode flags.")]
         [SerializeField]
-        TextMeshProUGUI m_FlagsText;
+        private TextMeshProUGUI m_FlagsText;
 
         [Tooltip("The SliderToggle element used to control the on/off state of Horizontal plane detection.")]
         [SerializeField]
-        SliderToggle m_HorizontalSliderToggle;
-        
+        private SliderToggle m_HorizontalSliderToggle;
+
         [Tooltip("The SliderToggle element used to control the on/off state of Vertical plane detection.")]
         [SerializeField]
-        SliderToggle m_VerticalSliderToggle;
-        
+        private SliderToggle m_VerticalSliderToggle;
+
         [Tooltip("The SliderToggle element used to control the on/off state of NotAxisAligned plane detection.")]
         [SerializeField]
-        SliderToggle m_NotAxisAlignedSliderToggle;
+        private SliderToggle m_NotAxisAlignedSliderToggle;
 
         [SerializeField, HideInInspector]
-        ARPlaneManager m_ARPlaneManager;
+        private ARPlaneManager m_ARPlaneManager;
 
-        PlaneDetectionMode m_DetectionMode;
+        private PlaneDetectionMode m_DetectionMode;
 
-        void Reset()
+        private void Reset()
         {
             m_ARPlaneManager = GetComponent<ARPlaneManager>();
         }
-        
-        void Start()
+
+        private void Start()
         {
             var detectionMode = m_ARPlaneManager.requestedDetectionMode;
             m_FlagsText.text = "Flags: " + detectionMode;
@@ -45,19 +45,19 @@ namespace UnityEngine.XR.ARFoundation.Samples
                 m_HorizontalSliderToggle.SetSliderValue((detectionMode & PlaneDetectionMode.Horizontal) == PlaneDetectionMode.Horizontal);
             else
                 m_HorizontalSliderToggle.SetEnabled(false);
-            
+
             if (m_ARPlaneManager.descriptor.supportsVerticalPlaneDetection)
                 m_VerticalSliderToggle.SetSliderValue((detectionMode & PlaneDetectionMode.Vertical) == PlaneDetectionMode.Vertical);
             else
                 m_VerticalSliderToggle.SetEnabled(false);
-            
+
             if (m_ARPlaneManager.descriptor.supportsArbitraryPlaneDetection)
                 m_NotAxisAlignedSliderToggle.SetSliderValue((detectionMode & PlaneDetectionMode.NotAxisAligned) == PlaneDetectionMode.NotAxisAligned);
             else
                 m_NotAxisAlignedSliderToggle.SetEnabled(false);
         }
 
-        void Update()
+        private void Update()
         {
             var detectionMode = m_ARPlaneManager.currentDetectionMode;
 
