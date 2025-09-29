@@ -2,7 +2,6 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-[RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CapsuleCollider))]
 [RequireComponent(typeof(NavMeshAgent))]
 public class AgentController : MonoBehaviour
@@ -21,6 +20,7 @@ public class AgentController : MonoBehaviour
     public float currentSize;
     private Renderer agentRender;
     private NavMeshAgent navAgent;
+    private Rigidbody rb;
 
     private enum AgentState
     {
@@ -37,13 +37,23 @@ public class AgentController : MonoBehaviour
         currentSize = baseSize;
         agentRender = GetComponent<Renderer>();
 
+        // Desactivar Rigidbody si existe para evitar caída
+        rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
         navAgent = GetComponent<NavMeshAgent>();
         navAgent.speed = moveSpeed;
         navAgent.angularSpeed = angularSpeed;
         navAgent.radius = 0.5f;
         navAgent.height = 2f;
         navAgent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
-        navAgent.enabled = false;
+
+        // Intentar activar inmediatamente
+        navAgent.enabled = true;
 
         agentRender.material.color = Color.white;
 
@@ -52,30 +62,48 @@ public class AgentController : MonoBehaviour
 
     IEnumerator WaitForNavMesh()
     {
-        yield return new WaitForSeconds(1f);
+        yield return null;
 
-        while (!TryActivateNavMesh())
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(transform.position, out hit, 5f, NavMesh.AllAreas))
         {
-            yield return new WaitForSeconds(0.5f);
+            transform.position = hit.position;
+            navAgent.Warp(hit.position);
+        }
+        else
+        {
+            yield return StartCoroutine(WaitAndRetryNavMesh());
         }
 
         SetWanderTarget();
     }
 
-    bool TryActivateNavMesh()
+    IEnumerator WaitAndRetryNavMesh()
     {
-        NavMeshHit hit;
-        if (NavMesh.SamplePosition(transform.position, out hit, 2f, NavMesh.AllAreas))
+        int maxAttempts = 10;
+        int attempts = 0;
+
+        while (attempts < maxAttempts)
         {
-            navAgent.enabled = true;
-            return true;
+            yield return new WaitForSeconds(0.5f);
+
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(transform.position, out hit, 5f, NavMesh.AllAreas))
+            {
+                transform.position = hit.position;
+                navAgent.Warp(hit.position);
+                yield break;
+            }
+
+            attempts++;
         }
-        return false;
+
+        Debug.LogWarning("No se pudo encontrar NavMesh válido para el agente");
     }
 
     private void Update()
     {
-        if (!navAgent.enabled) return;
+        if (!navAgent.enabled || !navAgent.isOnNavMesh) return;
 
         switch (currentState)
         {

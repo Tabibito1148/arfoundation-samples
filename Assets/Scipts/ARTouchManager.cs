@@ -83,6 +83,12 @@ public class ARTouchManager : MonoBehaviour
 
     private void SpawnBall(Vector3 position)
     {
+        Vector3 adjustedPosition = position;
+        if (arCamera != null)
+        {
+            adjustedPosition.y = arCamera.transform.position.y;
+        }
+
         GameObject ball = Instantiate(ballPrefab, position, Quaternion.identity);
 
         Color randomColor = ballColors[Random.Range(0, ballColors.Length)];
