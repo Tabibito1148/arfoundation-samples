@@ -46,9 +46,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   raycastManager: {fileID: 0}
   arCamera: {fileID: 0}
-  ballPrefab: {fileID: 7522633764467401807, guid: 58aef2d9c6472344ea2df188552471a6,
+  ballPrefab: {fileID: 2234206610313039339, guid: e874e496c91ba7544be869dbe14d7efd,
     type: 3}
-  agentPrefab: {fileID: 2234206610313039339, guid: e874e496c91ba7544be869dbe14d7efd,
+  agentPrefab: {fileID: 8558514187073087256, guid: 40e2c505fda960c43b1a6fb6887c183c,
     type: 3}
   scoreText: {fileID: 0}
   sizeText: {fileID: 0}
+  ballColors:
+  - {r: 1, g: 0, b: 0, a: 1}
+  - {r: 0, g: 0, b: 1, a: 1}
+  - {r: 0, g: 1, b: 0, a: 1}
+  - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  - {r: 1, g: 0, b: 1, a: 1}
+  - {r: 0, g: 1, b: 1, a: 1}
+  - {r: 1, g: 1, b: 1, a: 1}

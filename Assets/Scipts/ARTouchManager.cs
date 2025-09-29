@@ -20,21 +20,32 @@ public class ARTouchManager : MonoBehaviour
 
     [Header("UI")]
     public TextMeshProUGUI scoreText;
-
+    public GameObject readyToSpawn;
     public TextMeshProUGUI sizeText;
 
     private List<ARRaycastHit> raycastHits = new List<ARRaycastHit>();
-    private AgentController agent;
+    private AgentControllerWithRB agent;
     private int score = 0;
     private bool agentSpawned = false;
+    public float beforeBallSpawn = 0f;
 
-    private Color[] ballColors = {
+    public Color[] ballColors = {
         Color.red, Color.blue, Color.green, Color.yellow,
         Color.magenta, Color.cyan, Color.white
     };
 
     private void Update()
     {
+        beforeBallSpawn += Time.deltaTime;
+
+        if (beforeBallSpawn >= 1f)
+        {
+            readyToSpawn.SetActive(true);
+        }
+        else
+        {
+            readyToSpawn.SetActive(false);
+        }
         if (Touchscreen.current != null)
         {
             var touch = Touchscreen.current.primaryTouch;
@@ -74,7 +85,7 @@ public class ARTouchManager : MonoBehaviour
     private void SpawnAgent(Vector3 position)
     {
         GameObject agentObj = Instantiate(agentPrefab, position, Quaternion.identity);
-        agent = agentObj.GetComponent<AgentController>();
+        agent = agentObj.GetComponent<AgentControllerWithRB>();
         agent.Initialize(this);
         agentSpawned = true;
 
@@ -83,26 +94,33 @@ public class ARTouchManager : MonoBehaviour
 
     private void SpawnBall(Vector3 position)
     {
-        Vector3 adjustedPosition = position;
-        if (arCamera != null)
+        if (beforeBallSpawn >= 1f)
         {
-            adjustedPosition.y = arCamera.transform.position.y;
+            Vector3 adjustedPosition = position;
+            if (arCamera != null)
+            {
+                adjustedPosition.y = arCamera.transform.position.y;
+            }
+
+            GameObject ball = Instantiate(ballPrefab, position, Quaternion.identity);
+
+            Color randomColor = ballColors[Random.Range(0, ballColors.Length)];
+            ball.GetComponent<Renderer>().material.color = randomColor;
+
+            Ball ballScript = ball.GetComponent<Ball>();
+            ballScript.Initialize(randomColor);
+
+            if (agent != null)
+            {
+                agent.SetTarget(ball);
+            }
+
+            StartCoroutine(BounceAnimation(ball.transform));
+
+            beforeBallSpawn = 0f;
         }
+        else return;
 
-        GameObject ball = Instantiate(ballPrefab, position, Quaternion.identity);
-
-        Color randomColor = ballColors[Random.Range(0, ballColors.Length)];
-        ball.GetComponent<Renderer>().material.color = randomColor;
-
-        Ball ballScript = ball.GetComponent<Ball>();
-        ballScript.Initialize(randomColor);
-
-        if (agent != null)
-        {
-            agent.SetTarget(ball);
-        }
-
-        StartCoroutine(BounceAnimation(ball.transform));
     }
 
     private IEnumerator BounceAnimation(Transform target)
@@ -135,5 +153,7 @@ public class ARTouchManager : MonoBehaviour
 
         if (sizeText != null && agent != null)
             sizeText.text = "Size: " + agent.GetSize().ToString("F1");
+
+
     }
 }
